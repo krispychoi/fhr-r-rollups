@@ -86,8 +86,17 @@ isTargetedY <- function(locale, distribtype, geo = NULL, version = NULL) {
 ##            is FALSE.
 ## - new.sdef: whether a new search default was set on ver.date because of the 
 ##             use of the version of interest, either on updating or on first 
-##             use of a new profile? 
-## - reason: a string indicating which step gave the results
+##             use of a new profile 
+## - reason: a description of the way these fields were ascertained: 
+##     > "uitour" if they were read from a valid UITour measurement
+##     > "pcd" if the profile was determined to be newly created based on 
+##        profile creation date 
+##     > "updates" if it is based on a version update to a version of interest, 
+##        possibly with "prevdef" appended if the previous search default was
+##        checked
+##     > "nodays" if there were no active days during the period of interest
+##     > "noupdates" if the profile was not newly created and there was no
+##       evidence of having been on a version of interest
 ##
 ## If UITour information is present, 'new.sdef' is read from there. Otherwise, 
 ## it is TRUE iff has.ver is TRUE and the profile was considered targeted, and
