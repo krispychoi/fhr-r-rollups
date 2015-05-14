@@ -1,5 +1,15 @@
 PCTMAX <- 1
 MONSEC <- 15
+library(sendmailR)
+email <- function(subj="blank subject", body="blank body",to="<sguha@mozilla.com>"){
+    tryCatch({
+        bodyWithAttachment <- list(body)
+        sendmail(from="<sguha@mozilla.com>",to=to,subject=subj
+               ,msg=bodyWithAttachment
+                 ,control=list(smtpServer='smtp.mozilla.org'))
+        list(TRUE,NA)
+    },error=function(e) list(FALSE,e))
+}
 extract.date <- function(s){
     a <- tail(strsplit(s,"/",fixed=TRUE)[[1]],1)
     list(name=a, date=as.Date(a))
@@ -38,6 +48,9 @@ waitForJobs <- function(L){
 #########################################################################################
 ## Running
 #########################################################################################
+source("/etc/mozilla.cluster.conf/other_configs/rhipe.mozilla.setup.R")
+sqtxt <- function (folders) rhfmt(type = "sequence", folder = folders, recordsAsText = TRUE)
+
 setwd("~/fhr-r-rollups")
 source("lib/search.R",keep.source=FALSE)
 source("lib/profileinfo.R",keep.source=FALSE)
@@ -45,7 +58,7 @@ source("lib/activity.R",keep.source=FALSE)
 source("lib/sguha.functions.R",keep.source=FALSE)
 source("makeFlatTables.v3.R",keep.source=FALSE)
 
-I <- list(name=sqtxt("/user/sguha/fhr/samples/output/5pct"),tag=TRUE) ## tag if need to apply fromJSON
+I <- list(name=sqtxt("/user/sguha/fhr/samples/output/1pct"),tag=TRUE) ## tag if need to apply fromJSON
 
 ## Get the snapshot date from the sample creation time
 rhread("/user/sguha/fhr/samples/output/createdTime.txt",type='text')
@@ -61,7 +74,7 @@ hdfs.setwd(sprintf("/user/sguha/fhrrollup/%s/",strftime(fileOriginDate,"%Y-%m-%d
 
 BACK <- 90
 timeperiod <- list(start = strftime(fileOriginDate-BACK,"%Y-%m-%d"),
-                   end   = strftime(fileOriginDate-7,"%Y-%m-%d"))
+                   end   = strftime(fileOriginDate-1,"%Y-%m-%d"))
 PARAM      <- list(needstobetagged=I$tag,whichdate=fileOrigin,statcomputer=computeAllStats,usedt=FALSE)
 
 timeChunksWk    <- weekTimeChunk(timeperiod$start, timeperiod$end)
@@ -107,7 +120,6 @@ toText("rweek"  ,o="tweek")
 toText("rmonth" ,o="tmonth")
 toText("rday"   ,o="tday")
 
-email(subj="Rollups Completed Successfully", body=sprintf("The newest snapshot is %s", fileOrigin), to="<joy@mozilla.com>")
 
 
 ################################################################################
@@ -178,3 +190,4 @@ email(subj=sprintf("FHR Rollups V2: Completed for %s", strftime(as.Date(fileOrig
 ## })
 
 
+email(subj="Rollups Completed Successfully", body=sprintf("The newest snapshot is %s", fileOrigin), to="<joy@mozilla.com>")

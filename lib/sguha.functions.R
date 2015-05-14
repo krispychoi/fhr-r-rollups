@@ -1,3 +1,4 @@
+
 isn <- function(s,subcode=NA) if(is.null(s) || length(s)==0 || is.na(s)) subcode else s
 winVerCheck <- function(ver,keepverforothers=FALSE){
     ## http://www.msigeek.com/442/windows-os-version-numbers
@@ -17,6 +18,36 @@ winVerCheck <- function(ver,keepverforothers=FALSE){
   })
 }
 getWindowsVersionAsString <- winVerCheck(keepverforothers=TRUE)
+
+##' Takes bytes and converts to human readable format
+##' @param bytes is the number of bytes
+##' @return a string
+bytesToString <- function(bytes,rnd=2){
+  Round <- function(a,b){
+    format(round(a,b),nsmall=2)
+  }
+  if(bytes<1024) sprintf("%s kb",bytes)
+  else if(bytes<1024*1024) sprintf("%s KB",Round(bytes/1024,rnd))
+  else if(bytes< 1024*1024*1024) sprintf("%s MB", Round(bytes/(1024*1024),rnd))
+  else  sprintf("%s GB",Round(bytes/(1024*1024*1024),rnd))
+}
+
+
+##' Takes seconds and converts to human readable format
+##' @param secs is the number of seconds
+##' @return a string
+secondsToString <- function(secs,rnd=2){
+  Round <- function(a,b){
+    format(round(a,b),nsmall=2)
+  }
+  if(secs<60) sprintf("%s seconds",secs)
+  else if(secs<60*60) sprintf("%s minutes",Round(secs/60,rnd))
+  else if(secs< 86400) sprintf("%s hours", Round(secs/(60*60),rnd))
+  else if(secs< (86400*30)) sprintf("%s days",Round(secs/(86400),rnd))
+  else if(secs< (86400*365)) sprintf("%s months",Round(secs/(86400*30),rnd))
+  else  sprintf("%s years",Round(secs/(86400*365),rnd))
+}
+
 
 getOSXVersionAsString <- function(s){
     s <- isn(s)
@@ -83,4 +114,49 @@ toText <- function(i,o){
     rhdel(a[!grepl("part-",a)])
     rhchmod(o,"777")
     o
+}
+
+
+
+hlmCategory <- function(days,totalDays=NULL,asNumber=FALSE,returnHrs=FALSE){
+    ## needs dependen functinons in https://github.com/mozilla/fhr-r-rollups/blob/master/makeFlatTables.v3.R
+    totalhrs <- totalActivity(days)
+    totalhrs <- totalhrs$activesec/3600
+    avg <- totalhrs / totalDays
+    state=if(avg<10/60) "01La" else if(avg<=30/60) "02Oc" else if(avg<1) "03Li" else if(avg<3) "04Me" else if (avg<18) "05Hi" else "06Bo"
+    res <- if(asNumber){
+        if(state=="01La") 1 else if(state=="02Oc") 2 else if(state=="03Li") 3 else if(state=="04Me") 4 else if(state=="05Hi") 5 else 6
+    }else state
+    if(returnHrs) return( list(hrs=totalDays, state=res)) else return(res)
+}
+
+
+tagDaysByVersion <- function(d){
+    ##  takes $data$days and returns a modified data$days
+    ## with versioninfo attached as a field
+    ## i've not done much error checking with this
+    ## if you get errors notify me
+    if(length(d$data$days)==0) return(d$data$days)
+    days <- d$data$days [ order(names(d$data$days)) ]
+    dates <- names(days)
+    dversion <- rep(NA, length(dates))
+    iversion <- NA
+    verupdate <- rep(FALSE,length(dates))
+    for(i in 1:length(dates)){
+        vs <- days[[i]]$org.mozilla.appInfo.versions
+        if(is.null(vs$appVersion)){
+            dversion[i] <- iversion
+        }else{
+            iversion <- dversion[i] <- max(unlist(vs$appVersion)) ## there can be several on a day
+            verupdate[i] <- TRUE
+        }
+    }
+    ## If alll of dversion is NA, there was never an update
+    ## Force them to be equal to gecko values
+    if(all(is.na(dversion))) dversion <- rep(d$geckoAppInfo$platformVersion, length(dates))
+    days <- mapply(function(dc, dv, vu){
+        dc$versioninfo <- list(version=dv,vup=vu)
+        dc
+    }, days, dversion,verupdate, SIMPLIFY=FALSE)
+    return(days)
 }
